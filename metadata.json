@@ -1,0 +1,5 @@
+{
+  "name": "ProCircuit 架构师",
+  "description": "专业级电路图编辑器，支持三相四线、拖拽元器件及AI安全分析。",
+  "requestFramePermissions": []
+}
