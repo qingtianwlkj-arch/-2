@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { WireType, WireStyle } from '../types';
 import { WIRE_COLORS, WIRE_LABELS } from '../constants';
-import { Trash2, Sparkles, Loader2, FileDown, Undo2, Redo2, CornerDownRight, Spline, Minus, List } from 'lucide-react';
+import { Trash2, Sparkles, Loader2, FileDown, Undo2, Redo2, CornerDownRight, Spline, Minus, List, Camera, ImagePlus } from 'lucide-react';
 
 interface ToolbarProps {
   activeWireType: WireType;
@@ -11,7 +11,8 @@ interface ToolbarProps {
   onClear: () => void;
   onAnalyze: () => void;
   onExport: () => void;
-  onExportBOM: () => void; // New prop
+  onExportBOM: () => void;
+  onImageUpload: (file: File) => void; // New prop
   isAnalyzing: boolean;
   isExporting: boolean;
   onUndo: () => void;
@@ -29,6 +30,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
   onAnalyze,
   onExport,
   onExportBOM,
+  onImageUpload,
   isAnalyzing,
   isExporting,
   onUndo,
@@ -36,6 +38,16 @@ const Toolbar: React.FC<ToolbarProps> = ({
   canUndo,
   canRedo
 }) => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      onImageUpload(e.target.files[0]);
+      // Reset value so same file can be selected again if needed
+      e.target.value = '';
+    }
+  };
+
   return (
     <div className="h-16 bg-slate-900 border-b border-slate-800 flex items-center px-4 justify-between shadow-md z-10 gap-4">
       <div className="flex items-center gap-4 overflow-x-auto no-scrollbar">
@@ -117,6 +129,25 @@ const Toolbar: React.FC<ToolbarProps> = ({
       </div>
 
       <div className="flex items-center gap-3 shrink-0">
+        <input 
+          type="file" 
+          ref={fileInputRef} 
+          className="hidden" 
+          accept="image/*" 
+          capture="environment"
+          onChange={handleFileChange} 
+        />
+        
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          disabled={isAnalyzing}
+          className="flex items-center gap-2 px-3 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm font-medium rounded-lg transition-all border border-slate-600 shadow-sm disabled:opacity-50"
+          title="拍照或上传配电箱图纸自动生成"
+        >
+           <Camera size={16} />
+           <span className="hidden xl:inline">拍照/识别</span>
+        </button>
+
         <button
           onClick={onExportBOM}
           className="flex items-center gap-2 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-medium rounded-lg transition-all border border-slate-700"

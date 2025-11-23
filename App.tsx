@@ -4,8 +4,8 @@ import Toolbar from './components/Toolbar';
 import CircuitCanvas from './components/CircuitCanvas';
 import { CircuitNode, CircuitConnection, WireType, WireStyle } from './types';
 import { COMPONENT_TEMPLATES } from './constants';
-import { analyzeCircuit } from './services/aiHelper';
-import { Bot, X } from 'lucide-react';
+import { analyzeCircuit, generateCircuitFromImage } from './services/aiHelper';
+import { Bot, X, Loader2 } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 
@@ -28,6 +28,7 @@ const App: React.FC = () => {
   const [activeWireStyle, setActiveWireStyle] = useState<WireStyle>(WireStyle.ORTHOGONAL);
   const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -164,6 +165,42 @@ const App: React.FC = () => {
       setAiAnalysis(result);
     } finally {
       setIsAnalyzing(false);
+    }
+  };
+  
+  // --- Image Upload & Generation ---
+  const handleImageUpload = async (file: File) => {
+    setIsGenerating(true);
+    try {
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        const base64 = e.target?.result as string;
+        // Remove data URL prefix for API
+        const base64Data = base64.split(',')[1];
+        
+        const result = await generateCircuitFromImage(base64Data);
+        if (result) {
+          if (nodes.length > 0) {
+             if (window.confirm("AI 识别成功。是否清空当前画布并加载识别结果？")) {
+               setNodes(result.nodes);
+               setConnections(result.connections);
+               saveToHistory(result.nodes, result.connections);
+             }
+          } else {
+             setNodes(result.nodes);
+             setConnections(result.connections);
+             saveToHistory(result.nodes, result.connections);
+          }
+        } else {
+          alert("AI 未能识别出有效的电路结构，请尝试更清晰的图片。");
+        }
+        setIsGenerating(false);
+      };
+      reader.readAsDataURL(file);
+    } catch (error) {
+      console.error("Upload failed", error);
+      alert("上传处理失败");
+      setIsGenerating(false);
     }
   };
 
@@ -336,6 +373,7 @@ const App: React.FC = () => {
           onAnalyze={handleAIAnalysis}
           onExport={handleExportPDF}
           onExportBOM={handleExportBOM}
+          onImageUpload={handleImageUpload}
           isAnalyzing={isAnalyzing}
           isExporting={isExporting}
           onUndo={undo}
@@ -370,6 +408,14 @@ const App: React.FC = () => {
             onDeleteNode={deleteNode}
             onNodeMoveEnd={handleNodeMoveEnd}
           />
+
+          {isGenerating && (
+            <div className="absolute inset-0 z-50 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center flex-col gap-4 animate-in fade-in">
+               <Loader2 className="animate-spin text-yellow-500 w-12 h-12" />
+               <p className="text-xl font-bold text-white">正在识别图纸并生成电路...</p>
+               <p className="text-sm text-slate-400">Gemini Vision 正在分析您的配电箱</p>
+            </div>
+          )}
 
           {aiAnalysis && (
             <div className="absolute bottom-4 right-4 w-96 bg-slate-800/95 backdrop-blur border border-yellow-500/30 rounded-xl shadow-2xl z-50 flex flex-col max-h-[50%] animate-in slide-in-from-bottom-4 fade-in duration-300" data-html2canvas-ignore>
